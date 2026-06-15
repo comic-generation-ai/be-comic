@@ -1,98 +1,83 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# ComicSystem Backend (`be-comic`)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Ứng dụng Backend API được xây dựng bằng **NestJS** và **TypeORM**, đóng vai trò là API Gateway và lưu trữ dữ liệu chính cho hệ thống sinh truyện tranh tự động.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Mọi logic giao tiếp với các AI service (gRPC) và điều phối công việc (Saga Workflow) đều được xử lý ở phía sau bởi `orchestrator-ai`. Client (Frontend) chỉ giao tiếp duy nhất với `be-comic`.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 🛠️ Cài đặt & Khởi chạy (Local Development)
 
-## Project setup
-
+### Bước 1: Cài đặt Dependencies
+Cài đặt các gói thư viện cần thiết:
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
-
+### Bước 2: Thiết lập file môi trường `.env`
+Sao chép file cấu hình mẫu và điền thông tin kết nối cơ sở dữ liệu của bạn:
 ```bash
-# development
-$ npm run start
+cp .env.example .env
+```
+*Mặc định file `.env` đã được cấu hình trỏ vào container Postgres chạy ở local.*
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+### Bước 3: Khởi chạy Database Postgres qua Docker
+Khởi chạy container PostgreSQL được cấu hình sẵn cho dự án:
+```bash
+docker-compose up -d
 ```
 
-## Run tests
+### Bước 4: Chạy Database Migration (TypeORM)
+Dự án sử dụng cơ chế **Migration** của TypeORM để quản lý cấu trúc bảng (schema).
 
+* **Chạy toàn bộ migrations** để dựng database:
+  ```bash
+  npm run migration:run
+  ```
+* **Tự động sinh migration mới** khi bạn thay đổi các file Entity:
+  ```bash
+  npm run migration:generate -- src/db/migrations/TenMigrationCuaBan
+  ```
+* **Hủy bỏ (rollback) migration gần nhất**:
+  ```bash
+  npm run migration:revert
+  ```
+
+### Bước 5: Khởi chạy NestJS ở chế độ Watch Mode
+Khởi chạy server NestJS để phát triển:
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev
 ```
+Server backend sẽ chạy tại: **`http://localhost:8000`** với prefix là **`/api/v1`**.
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## 📖 Tài liệu API (Swagger UI & OpenAPI)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 1. Swagger UI trực quan
+Khi ứng dụng khởi chạy, tài liệu API chi tiết sẽ được tự động tích hợp tại:
+👉 **[http://localhost:8000/docs](http://localhost:8000/docs)**
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+Tại đây, bạn có thể xem chi tiết các Endpoint, kiểu dữ liệu truyền lên/nhận về và trực tiếp chạy thử (Try it out) các API.
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 2. OpenAPI Contract (Hợp đồng API)
+Hợp đồng API chính giữa Frontend và Backend được định nghĩa tập trung tại file:
+📄 **[public-api.openapi.yaml](../documents/contracts/public-api.openapi.yaml)**
 
-## Resources
+* **Vai trò:** Giúp đội ngũ phát triển Front-end và Back-end thống nhất trước thiết kế API mà không cần chờ code xong.
+* **Cách xem file này:** Bạn có thể cài extension **OpenAPI (Swagger) Editor** trên VS Code, hoặc import file này vào [Swagger Editor](https://editor.swagger.io/) để xem giao diện trực quan.
 
-Check out a few resources that may come in handy when working with NestJS:
+---
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## 📂 Cấu trúc thư mục chính
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+* `src/db/`: Chứa cấu hình kết nối `data-source.ts` và thư mục `migrations/`.
+* `src/common/`: Chứa các Base class, cấu hình constants, interceptors, filters dùng chung.
+* `src/module/`: Chứa các module nghiệp vụ:
+  * `users/`: Quản lý tài khoản, credits.
+  * `projects/`: Quản lý dự án truyện tranh của người dùng.
+  * `scripts/`: Quản lý kịch bản truyện tranh (4 panels) sinh từ AI.
+  * `frames/`: Quản lý các khung hình và ảnh của từng panel.
+  * `speech-bubbles/`: Quản lý các bong bóng thoại trên ảnh.
+  * `generation-jobs/`: Quản lý tiến trình/trạng thái tạo truyện.
+  * `transactions/`: Quản lý lịch sử nạp/trừ tiền/credits.

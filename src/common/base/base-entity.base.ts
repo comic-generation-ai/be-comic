@@ -1,18 +1,26 @@
 import {
-    Column,
     CreateDateColumn,
-    DeleteDateColumn,
     UpdateDateColumn,
+    DeleteDateColumn,
 } from 'typeorm';
 
 export abstract class BaseEntity {
-    @CreateDateColumn({ name: 'created_at' })
+    @CreateDateColumn({
+        name: 'created_at',
+        type: 'timestamptz',
+    })
     created_at: Date;
 
-    @UpdateDateColumn({ name: 'updated_at' })
+    @UpdateDateColumn({
+        name: 'updated_at',
+        type: 'timestamptz',
+    })
     updated_at: Date;
 
-    @DeleteDateColumn({ name: 'deleted_at' })
-    deleted_at: Date;
-
+    @DeleteDateColumn({
+        name: 'deleted_at',
+        type: 'timestamptz',
+        nullable: true,
+    })
+    deleted_at?: Date;
 }
