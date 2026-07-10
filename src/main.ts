@@ -24,8 +24,16 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT ?? 8000;
+
+  const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:4200')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: corsOrigins });
+
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/api/v1`);
+  console.log(`Application is running on: http://localhost:${port}/api`);
   console.log(`Swagger documentation is available at: http://localhost:${port}/docs`);
+  console.log(`CORS origins: ${corsOrigins.join(', ')}`);
 }
 bootstrap();
