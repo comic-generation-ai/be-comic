@@ -9,6 +9,8 @@ import { JobStatus, JobType } from 'src/common/constants';
 // import { ClientGrpc } from '@nestjs/microservices';
 import * as NestMicro from '@nestjs/microservices';
 import * as crypto from 'crypto';
+import { FramesService } from '../frames/frames.service';
+import { PanelDto } from './dto/panel.dto';
 
 interface StartRequest {
   jobId: string;
@@ -33,7 +35,8 @@ export interface StatusResponse {
   pageImageUrl: string;
   errorMessage: string;
   currentStep: string;
-  panels: any[];
+  panels: PanelDto[];
+
 }
 interface CancelRequest {
   jobId: string;
@@ -57,8 +60,9 @@ export class GenerationJobsService implements OnModuleInit {
     private readonly jobRepo: Repository<GenerationJob>,
     @Inject('ORCHESTRATOR_PACKAGE')
     private readonly grpcClient: NestMicro.ClientGrpc,
-
+    private readonly framesService: FramesService,
     private readonly dataSource: DataSource,
+
   ) { }
 
   onModuleInit() {
@@ -66,7 +70,6 @@ export class GenerationJobsService implements OnModuleInit {
       'ComicOrchestratorService',
     );
   }
-
 
   async create(dto: CreateGenerationJobDto, userId = 'user-default-id') {
     const jobId = crypto.randomUUID();
@@ -155,6 +158,7 @@ export class GenerationJobsService implements OnModuleInit {
       let hasChanged = false;
 
       if (liveStatus.status === 6) {
+        await this.framesService.saveFromPanels(localJob.project_id, liveStatus.panels);
         localJob.status = JobStatus.COMPLETED;
         localJob.completed_at = new Date();
         hasChanged = true;

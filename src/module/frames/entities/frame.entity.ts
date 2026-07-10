@@ -7,6 +7,7 @@ import { SpeechBubble } from "src/module/speech-bubbles/entities/speech-bubble.e
 import { GenerationJob } from "src/module/generation-jobs/entities/generation-job.entity";
 
 @Entity('COMIC_FRAME')
+@Index('idx_comicframe_project_order', ['project_id', 'order_index'], { unique: true })
 export class Frame extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id: string
@@ -39,11 +40,6 @@ export class Frame extends BaseEntity {
     @OneToMany(() => GenerationJob, (job) => job.frame)
     generation_jobs: GenerationJob[];
 
-
-    //    UNIQUE(project_id, order_index)
-    @Index('idx_comicframe_project_id_order_index', {
-        unique: true
-    })
     @Column({
         name: 'order_index',
         type: 'smallint',
@@ -82,4 +78,10 @@ export class Frame extends BaseEntity {
         default: FrameStatus.PENDING
     })
     status: FrameStatus
+
+    @Column({ name: 'caption_vi', type: 'text', nullable: true })
+    caption_vi: string
+
+    @Column({ name: 'seed', type: 'bigint', nullable: true })
+    seed: number
 }

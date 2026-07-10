@@ -1,26 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { CreateFrameDto } from './dto/create-frame.dto';
-import { UpdateFrameDto } from './dto/update-frame.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Frame } from './entities/frame.entity';
+import { Repository } from 'typeorm';
+import { PanelDto } from '../generation-jobs/dto/panel.dto';
+import { FrameStatus } from 'src/common/constants';
 
 @Injectable()
 export class FramesService {
-  create(createFrameDto: CreateFrameDto) {
-    return 'This action adds a new frame';
+  constructor(
+    @InjectRepository(Frame)
+    private readonly frameRepo: Repository<Frame>,
+  ) { }
+
+  findByProject(projectId: string) {
+    return this.frameRepo.find({
+      where: { project_id: projectId },
+      order: { order_index: 'ASC' },
+      relations: { speech_bubbles: true },
+    });
   }
 
-  findAll() {
-    return `This action returns all frames`;
+  async saveFromPanels(projectId: string, panels: PanelDto[]) {
+
+    for (const p of panels) {
+      await this.frameRepo.upsert(
+        {
+          project_id: projectId,
+          order_index: p.index ?? 0,
+          image_prompt: p.promptEn,
+          image_url: this.toObjectKey(p.imageUrl),
+          caption_vi: p.captionVi,
+          seed: p.seed,
+          status: FrameStatus.COMPLETED,
+        },
+        ['project_id', 'order_index'],
+      )
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} frame`;
-  }
-
-  update(id: number, updateFrameDto: UpdateFrameDto) {
-    return `This action updates a #${id} frame`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} frame`;
+  private toObjectKey(presignedUrl: string): string {
+    try {
+      return new URL(presignedUrl).pathname.slice(1);
+    } catch {
+      return presignedUrl;
+    }
   }
 }

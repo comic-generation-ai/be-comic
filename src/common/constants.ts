@@ -18,6 +18,13 @@ export enum TransactionStatus {
     CANCELLED = 'CANCELLED',
 }
 
+export enum PanelSatus {
+    PENDING = 'PENDING',
+    PROCESSING = 'PROCESSING',
+    SUCCESS = 'SUCCESS',
+    FAILED = 'FAILED',
+}
+
 export enum ProjectStatus {
     DRAFT = 'DRAFT',
     PROCESSING = 'PROCESSING',

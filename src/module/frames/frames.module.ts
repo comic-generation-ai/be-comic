@@ -8,5 +8,6 @@ import { Frame } from './entities/frame.entity';
   imports: [TypeOrmModule.forFeature([Frame])],
   controllers: [FramesController],
   providers: [FramesService],
+  exports: [FramesService]
 })
-export class FramesModule {}
+export class FramesModule { }
