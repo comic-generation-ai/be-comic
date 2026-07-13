@@ -1,16 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Frame } from './entities/frame.entity';
 import { Repository } from 'typeorm';
 import { PanelDto } from '../generation-jobs/dto/panel.dto';
 import { FrameStatus } from 'src/common/constants';
+import { StorageService } from 'src/common/storage/storage.service';
 
 @Injectable()
 export class FramesService {
   constructor(
     @InjectRepository(Frame)
     private readonly frameRepo: Repository<Frame>,
+    private readonly storage: StorageService
   ) { }
+
+  async getImageUrl(frameId: string) {
+    const frame = await this.frameRepo.findOne({ where: { id: frameId } });
+    if (!frame) throw new NotFoundException(`Frame ${frameId} not found`);
+    if (!frame.image_url) throw new NotFoundException(`Frame ${frameId} chưa có ảnh`);
+    const url = await this.storage.presignFromKey(frame.image_url);
+    return { url, expiresInSec: parseInt(process.env.MINIO_PRESIGN_EXPIRY_SEC ?? '3600', 10) };
+  }
 
   findByProject(projectId: string) {
     return this.frameRepo.find({
