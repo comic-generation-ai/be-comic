@@ -7,7 +7,7 @@ export class GenerationJobsController {
   constructor(private readonly generationJobsService: GenerationJobsService) { }
 
   @Post()
-  @HttpCode(HttpStatus.ACCEPTED) // Trả về 202 Accepted cho luồng async
+  @HttpCode(HttpStatus.ACCEPTED)
   create(@Body() createGenerationJobDto: CreateGenerationJobDto) {
     return this.generationJobsService.create(createGenerationJobDto);
   }
