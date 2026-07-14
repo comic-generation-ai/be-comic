@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { appConfig } from '../config';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter<HttpException> {
@@ -16,7 +17,7 @@ export class HttpExceptionFilter implements ExceptionFilter<HttpException> {
     const response = ctx.getResponse();
     const request = ctx.getRequest();
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (!appConfig.isProduction) {
       this.logger.error(`
             =======================================    
             [Exception] Have a exception - Stack: ${exception.name

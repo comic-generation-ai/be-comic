@@ -6,6 +6,7 @@ import { GenerationJob } from './entities/generation-job.entity';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { FramesModule } from '../frames/frames.module';
+import { orchestratorConfig } from 'src/common/config';
 
 @Module({
   imports: [TypeOrmModule.forFeature([GenerationJob]),
@@ -16,7 +17,7 @@ import { FramesModule } from '../frames/frames.module';
       options: {
         package: 'orchestrator',
         protoPath: join(__dirname, '../../proto/orchestrator.proto'),
-        url: process.env.ORCHESTRATOR_URL || 'localhost:50054',
+        url: orchestratorConfig.grpcUrl,
       },
     },
   ]), FramesModule

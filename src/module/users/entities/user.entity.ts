@@ -23,12 +23,12 @@ export class User extends BaseEntity {
     @OneToMany(() => Transaction, (transaction) => transaction.user)
     transactions: Transaction[];
 
-
     @Column({
         name: 'email',
         type: 'varchar',
         length: 255,
         nullable: false,
+        unique: true,
     })
     email: string;
 
@@ -41,6 +41,31 @@ export class User extends BaseEntity {
     password_hash: string;
 
     @Column({
+        name: 'full_name',
+        type: 'varchar',
+        length: 100,
+        nullable: true,
+    })
+    fullName: string;
+
+    @Column({
+        name: 'username',
+        type: 'varchar',
+        length: 50,
+        nullable: true,
+        unique: true,
+    })
+    username: string;
+
+    @Column({
+        name: 'avatar_url',
+        type: 'varchar',
+        length: 255,
+        nullable: true,
+    })
+    avatarUrl: string;
+
+    @Column({
         name: 'subscription_tier',
         type: 'enum',
         enum: SubscriptionTier,
@@ -50,10 +75,18 @@ export class User extends BaseEntity {
     subscription_tier: SubscriptionTier;
 
     @Column({
+        name: 'subscription_renews_at',
+        type: 'timestamp',
+        nullable: true,
+    })
+    subscriptionRenewsAt: Date;
+
+    @Column({
         name: 'credits_balance',
         type: 'integer',
         nullable: false,
         default: 0,
     })
     credits_balance: number;
+
 }

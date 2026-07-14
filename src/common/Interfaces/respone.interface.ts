@@ -1,15 +1,7 @@
-export class IResponse<T> {
+export interface IResponse<T = null> {
   success: boolean;
   code: number;
   message: string;
-  errorMessage: string;
-  data: T;
-}
-
-/** Dùng cho ProductAttributeService / luồng createProduct */
-export interface IResponseV2 {
-  success: boolean;
-  code?: number;
-  message?: string;
-  data?: any;
+  data: T | null;
+  errorMessage?: string;
 }

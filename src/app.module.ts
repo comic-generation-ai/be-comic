@@ -9,6 +9,7 @@ import { CharactersModule } from './module/characters/characters.module';
 import { FramesModule } from './module/frames/frames.module';
 import { SpeechBubblesModule } from './module/speech-bubbles/speech-bubbles.module';
 import { GenerationJobsModule } from './module/generation-jobs/generation-jobs.module';
+import { AuthModule } from './module/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -21,6 +22,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     FramesModule,
     SpeechBubblesModule,
     GenerationJobsModule,
+    AuthModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

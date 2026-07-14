@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { PanelDto } from '../generation-jobs/dto/panel.dto';
 import { FrameStatus } from 'src/common/constants';
 import { StorageService } from 'src/common/storage/storage.service';
+import { minioConfig } from 'src/common/config';
 
 @Injectable()
 export class FramesService {
@@ -19,7 +20,7 @@ export class FramesService {
     if (!frame) throw new NotFoundException(`Frame ${frameId} not found`);
     if (!frame.image_url) throw new NotFoundException(`Frame ${frameId} chưa có ảnh`);
     const url = await this.storage.presignFromKey(frame.image_url);
-    return { url, expiresInSec: parseInt(process.env.MINIO_PRESIGN_EXPIRY_SEC ?? '3600', 10) };
+    return { url, expiresInSec: minioConfig.presignExpirySec };
   }
 
   findByProject(projectId: string) {

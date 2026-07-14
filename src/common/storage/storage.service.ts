@@ -1,15 +1,16 @@
 import * as Minio from 'minio';
 import { Injectable } from '@nestjs/common';
+import { minioConfig } from '../config';
 
 
 @Injectable()
 export class StorageService {
     private client = new Minio.Client({
-        endPoint: process.env.MINIO_ENDPOINT ?? '127.0.0.1',
-        port: parseInt(process.env.MINIO_PORT ?? '9000', 10),
-        useSSL: false,
-        accessKey: process.env.MINIO_ACCESS_KEY ?? '',
-        secretKey: process.env.MINIO_SECRET_KEY ?? '',
+        endPoint: minioConfig.endPoint,
+        port: minioConfig.port,
+        useSSL: minioConfig.useSSL,
+        accessKey: minioConfig.accessKey,
+        secretKey: minioConfig.secretKey,
     });
 
     /**
@@ -19,7 +20,6 @@ export class StorageService {
     presignFromKey(objectKey: string): Promise<string> {
         const [bucket, ...rest] = objectKey.split('/');
         const objectName = rest.join('/');
-        const expiry = parseInt(process.env.MINIO_PRESIGN_EXPIRY_SEC ?? '3600', 10);
-        return this.client.presignedGetObject(bucket, objectName, expiry);
+        return this.client.presignedGetObject(bucket, objectName, minioConfig.presignExpirySec);
     }
 }

@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { appConfig } from '../config';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -18,7 +19,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const status = this.resolveStatus(exception);
     const message = this.resolveMessage(exception);
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (!appConfig.isProduction) {
       this.logger.error(
         `[Exception] ${message}`,
         exception instanceof Error ? exception.stack : undefined,
