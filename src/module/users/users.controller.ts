@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser, type CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -9,6 +11,13 @@ export class UsersController {
   @Get()
   findAll() {
     return this.usersService.findAll();
+  }
+
+  // Khai báo trước ':id' — nếu không Nest sẽ khớp 'me' vào tham số :id
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  findMe(@CurrentUser() user: CurrentUserPayload) {
+    return this.usersService.findMe(user.userId);
   }
 
   @Get(':id')

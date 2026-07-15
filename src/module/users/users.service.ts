@@ -10,7 +10,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-  ) { }
+  ) {}
 
   // Dùng bởi AuthModule (register/login)
   findByEmail(email: string) {
@@ -32,12 +32,42 @@ export class UsersService {
     return this.userRepo.save(user);
   }
 
+  // Không select password_hash — endpoint này (GET /api/users) trả thẳng ra FE.
   findAll() {
-    return this.userRepo.find();
+    return this.userRepo.find({
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        username: true,
+        avatarUrl: true,
+        subscription_tier: true,
+        credits_balance: true,
+        created_at: true,
+      },
+      order: { created_at: 'DESC' },
+    });
   }
 
   findOne(id: string) {
     return this.userRepo.findOne({ where: { id } });
+  }
+
+  // Dùng bởi GET /users/me — không select password_hash vì trả thẳng ra FE.
+  findMe(id: string) {
+    return this.userRepo.findOne({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        username: true,
+        avatarUrl: true,
+        subscription_tier: true,
+        credits_balance: true,
+        created_at: true,
+      },
+    });
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
