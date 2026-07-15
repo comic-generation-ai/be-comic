@@ -1,4 +1,4 @@
-import { IsUUID, IsString, IsNotEmpty, IsOptional, IsInt, Min, Max, MaxLength } from 'class-validator';
+import { IsUUID, IsString, IsNotEmpty, IsOptional, IsInt, Min, Max, MaxLength, IsIn } from 'class-validator';
 
 export class CreateGenerationJobDto {
     @IsUUID()
@@ -10,9 +10,8 @@ export class CreateGenerationJobDto {
     @MaxLength(1000)
     summary: string;
 
-    @IsString()
+    @IsIn(['storybook', 'anime', 'manga', 'retro', 'american_comic'])
     @IsOptional()
-    @MaxLength(100)
     style?: string;
 
     @IsInt()
