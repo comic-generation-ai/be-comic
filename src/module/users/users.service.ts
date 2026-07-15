@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { User } from './entities/user.entity';
 import { SubscriptionTier } from 'src/common/constants';
 
@@ -73,6 +74,12 @@ export class UsersService {
   async update(id: string, updateUserDto: UpdateUserDto) {
     await this.userRepo.update(id, updateUserDto);
     return this.findOne(id);
+  }
+
+  // Dùng bởi PATCH /users/me — chỉ set field trong UpdateProfileDto (whitelist)
+  async updateMe(id: string, dto: UpdateProfileDto) {
+    await this.userRepo.update(id, dto);
+    return this.findMe(id);
   }
 
   async remove(id: string) {
