@@ -9,7 +9,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 
-const DEFAULT_USER_ID = '11111111-1111-1111-1111-111111111111';
 @Injectable()
 export class ProjectsService {
   constructor(
@@ -17,7 +16,7 @@ export class ProjectsService {
     private readonly projectRepo: Repository<Project>,
   ) {}
 
-  create(dto: CreateProjectDto, userId = DEFAULT_USER_ID) {
+  create(dto: CreateProjectDto, userId: string) {
     const project = this.projectRepo.create({
       user_id: userId,
       title: dto.title,
@@ -28,7 +27,7 @@ export class ProjectsService {
     return this.projectRepo.save(project);
   }
 
-  findAll(userId = DEFAULT_USER_ID) {
+  findAll(userId: string) {
     return this.projectRepo.find({
       where: { user_id: userId },
       order: { created_at: 'DESC' },

@@ -22,9 +22,13 @@ import {
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() dto: CreateProjectDto) {
-    return this.projectsService.create(dto);
+  create(
+    @Body() dto: CreateProjectDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.projectsService.create(dto, user.userId);
   }
 
   // Guard + user thật từ token — trước đây không guard nên luôn trả project

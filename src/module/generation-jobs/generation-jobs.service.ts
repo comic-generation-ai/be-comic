@@ -71,7 +71,7 @@ export class GenerationJobsService implements OnModuleInit {
     );
   }
 
-  async create(dto: CreateGenerationJobDto, userId = 'user-default-id') {
+  async create(dto: CreateGenerationJobDto, userId: string) {
     const jobId = crypto.randomUUID();
     const requestId = crypto.randomUUID();
 
