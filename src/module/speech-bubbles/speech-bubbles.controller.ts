@@ -19,16 +19,16 @@ export class SpeechBubblesController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.speechBubblesService.findOne(+id);
+    return this.speechBubblesService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateSpeechBubbleDto: UpdateSpeechBubbleDto) {
-    return this.speechBubblesService.update(+id, updateSpeechBubbleDto);
+    return this.speechBubblesService.update(id, updateSpeechBubbleDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.speechBubblesService.remove(+id);
+    return this.speechBubblesService.remove(id);
   }
 }

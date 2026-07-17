@@ -8,4 +8,7 @@ export class PanelDto {
     seed: number;
     status: PanelSatus;
     errorMessage?: string; // error_message
+    speaker?: string;
+    panelType?: string; // panel_type
+    speakerPosition?: string; // speaker_position
 }
