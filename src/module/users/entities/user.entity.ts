@@ -57,7 +57,6 @@ export class User extends BaseEntity {
   })
   username: string;
 
-  // 'text' thay vì varchar(255) — avatar lưu dạng base64 data URL, dài hơn nhiều 255 ký tự
   @Column({
     name: 'avatar_url',
     type: 'text',

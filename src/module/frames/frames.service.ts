@@ -33,15 +33,9 @@ function classifyBubble(p: PanelDto): BubbleClassification {
   return p.panelType === 'action' ? 'SHOUT' : 'SPEECH';
 }
 
-// Bong bóng kích thước cố định trước đây không co giãn theo độ dài lời thoại —
-// chữ dài bị .bubble-static-text { -webkit-line-clamp: 5; overflow: hidden }
-// ở FE cắt/che mất khi bong bóng quá nhỏ. Ước lượng số dòng cần thiết ở cỡ chữ
-// mặc định (fontSize 16px, lineHeight 1.2 — xem defaults trong comic-editor.service.ts
-// của FE) để nới rộng width/height cho vừa nội dung, có chặn trần tránh bong bóng
-// phình quá khổ khung tranh.
 const AVG_CHAR_WIDTH_PX = 9;
-const LINE_HEIGHT_PX = 20; // fontSize 16 * lineHeight 1.2 ≈ 19.2, làm tròn lên
-const TEXT_PADDING_PX = 28; // padding hai bên cộng dồn (foreignObject inset 12px x2 + container padding)
+const LINE_HEIGHT_PX = 20;
+const TEXT_PADDING_PX = 28;
 const MAX_BUBBLE_WIDTH = 280;
 const MAX_BUBBLE_HEIGHT = 200;
 
@@ -87,7 +81,6 @@ function computeBubbleLayout(
       : undefined;
 
   if (!validPosition && !isShout) {
-    // dữ liệu cũ chưa có speaker_position — luân phiên theo panel_number
     const posX = panelNumber % 2 === 0 ? 70 : 30;
     const { width, height } = sizeForText(text, { width: 160, height: 100 });
     return {
@@ -110,15 +103,9 @@ function computeBubbleLayout(
     posX = 70;
     tailDirection = 'down-right';
   } else if (validPosition === 'center') {
-    // Story-ai đã xác định rõ nhân vật đang nói đứng giữa khung tranh (speaker_position
-    // = 'center') — trước đây nhánh này bị gộp chung với fallback luân phiên trái/phải
-    // bên dưới nên bong bóng lại trỏ sang một bên không có nhân vật nào. Đặt đúng giữa,
-    // mũi tên chỉ thẳng xuống nhân vật.
     posX = 50;
     tailDirection = 'down';
   } else {
-    // Chỉ còn lại: SHOUT không có speaker_position hợp lệ (dữ liệu cũ) — luân phiên
-    // trái/phải theo panel_number như một phỏng đoán cuối cùng.
     posX = panelNumber % 2 === 0 ? 70 : 30;
     tailDirection = posX === 70 ? 'down-right' : 'down-left';
   }
@@ -185,9 +172,6 @@ export class FramesService {
       });
       if (!frame) continue;
 
-      // Dọn bong bóng auto-generate cũ (job chạy lại/regenerate) trước khi tạo lại.
-      // KHÔNG dùng upsert theo frame_id — COMIC_SPEECH_BUBBLE không có unique
-      // constraint trên frame_id, upsert sẽ throw lỗi ON CONFLICT ở Postgres.
       await this.speechBubbleRepo.delete({ frame_id: frame.id });
 
       const classification = classifyBubble(p);

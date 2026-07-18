@@ -48,12 +48,12 @@ export class AuthService {
 
     const token = await this.jwtService.signAsync(
       { sub: user.id, email: user.email },
-      { expiresIn: jwtConfig.accessTokenExpiresIn as `${number}${'s' | 'm' | 'h' | 'd'}` },
+      { expiresIn: jwtConfig.accessTokenExpiresInLogin as `${number}${'s' | 'm' | 'h' | 'd'}` },
     );
 
     const refreshToken = await this.jwtService.signAsync(
       { sub: user.id, email: user.email },
-      { expiresIn: jwtConfig.refreshTokenExpiresIn as `${number}${'s' | 'm' | 'h' | 'd'}` },
+      { expiresIn: jwtConfig.accessTokenExpiresRefreshInLogin as `${number}${'s' | 'm' | 'h' | 'd'}` },
     );
 
     return ResponseCommon.ok(

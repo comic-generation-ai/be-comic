@@ -14,7 +14,7 @@ export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
-  ) {}
+  ) { }
 
   create(dto: CreateProjectDto, userId: string) {
     const project = this.projectRepo.create({
@@ -55,7 +55,6 @@ export class ProjectsService {
     return this.projectRepo.save(project);
   }
 
-  // userId bắt buộc — chỉ chủ sở hữu mới xóa được project của chính họ
   async remove(id: string, userId: string) {
     const project = await this.findOne(id);
     if (project.user_id !== userId) {

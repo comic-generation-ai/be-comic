@@ -48,7 +48,9 @@ export const minioConfig = {
 }
 
 export const jwtConfig = {
-    secret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
-    accessTokenExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
-    refreshTokenExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
+    secret: process.env.JWT_SECRET,
+    accessTokenExpiresInLogin: process.env.EXPIRESIN_LOGIN,
+    accessTokenExpiresRefreshInLogin: process.env.EXPIRESIN_REFRESH_LOGIN,
+    accessTokenExpiresInRegister: process.env.EXPIRESIN_REGISTER,
+    accessTokenExpiresInForgotPassword: process.env.EXPIRESIN_FORGOT_PASSWORD,
 }

@@ -1,18 +1,18 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { FramesService } from './frames.service';
 
 @Controller('frames')
 export class FramesController {
   constructor(private readonly framesService: FramesService) { }
 
-  // Frame được sinh tự động từ generation-jobs (saveFromPanels) — API chỉ cần đọc.
-  // FE lấy toàn bộ frame của một truyện: GET /frames?projectId=xxx
   @Get()
+  @HttpCode(HttpStatus.OK)
   findByProject(@Query('projectId') projectId: string) {
     return this.framesService.findByProject(projectId);
   }
 
   @Get(':id/image-url')
+  @HttpCode(HttpStatus.OK)
   getImageUrl(@Param('id', ParseUUIDPipe) id: string) {
     return this.framesService.getImageUrl(id);
   }
