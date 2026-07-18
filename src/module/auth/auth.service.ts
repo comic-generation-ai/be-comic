@@ -48,17 +48,28 @@ export class AuthService {
 
     const token = await this.jwtService.signAsync(
       { sub: user.id, email: user.email },
-      { expiresIn: jwtConfig.accessTokenExpiresInLogin as `${number}${'s' | 'm' | 'h' | 'd'}` },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { secret: jwtConfig.secret, expiresIn: jwtConfig.accessTokenExpiresInLogin as any },
     );
 
     const refreshToken = await this.jwtService.signAsync(
       { sub: user.id, email: user.email },
-      { expiresIn: jwtConfig.accessTokenExpiresRefreshInLogin as `${number}${'s' | 'm' | 'h' | 'd'}` },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { secret: jwtConfig.refreshSecret, expiresIn: jwtConfig.accessTokenExpiresRefreshInLogin as any },
     );
 
     return ResponseCommon.ok(
       { email: user.email, token, refreshToken },
       'LOGIN_SUCCESS',
     );
+  }
+
+  async refreshAccessToken(userId: string, email: string): Promise<IResponse<any>> {
+    const token = await this.jwtService.signAsync(
+      { sub: userId, email },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { secret: jwtConfig.secret, expiresIn: jwtConfig.accessTokenExpiresInLogin as any },
+    );
+    return ResponseCommon.ok({ token }, 'REFRESH_TOKEN_SUCCESS');
   }
 }

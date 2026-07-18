@@ -5,6 +5,7 @@ import { UsersModule } from '../users/users.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { jwtConfig } from 'src/common/config';
 
 @Module({
@@ -14,12 +15,13 @@ import { jwtConfig } from 'src/common/config';
     JwtModule.register({
       secret: jwtConfig.secret,
       signOptions: {
-        expiresIn: parseInt(jwtConfig.accessTokenExpiresInLogin || '3600000'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expiresIn: jwtConfig.accessTokenExpiresInLogin as any,
       },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
   exports: [AuthService],
 })
 export class AuthModule { }

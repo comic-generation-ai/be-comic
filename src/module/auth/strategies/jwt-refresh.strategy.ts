@@ -3,19 +3,15 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { jwtConfig } from 'src/common/config';
 import { UsersService } from 'src/module/users/users.service';
-
-export interface JwtPayload {
-  sub: string; // user id
-  email: string;
-}
+import { JwtPayload } from './jwt.strategy';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   constructor(private readonly userService: UsersService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
       ignoreExpiration: false,
-      secretOrKey: jwtConfig.secret || '',
+      secretOrKey: jwtConfig.refreshSecret || '',
     });
   }
 
