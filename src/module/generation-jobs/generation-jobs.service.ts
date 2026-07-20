@@ -20,6 +20,15 @@ interface StartRequest {
   numPanels: number;
   requestId: string;
 }
+
+enum OrchestratorJobStatus {
+  UNKNOWN = 0,
+  QUEUED = 1,
+  RUNNING = 2,
+  COMPLETED = 3,
+  FAILED = 4,
+  CANCELLED = 5,
+}
 interface StartResponse {
   jobId: string;
   status: number; // Enum của orchestrator
@@ -44,6 +53,17 @@ interface CancelRequest {
 interface CancelResponse {
   jobId: string;
   status: number;
+}
+
+function mapOrchestratorStatus(status: OrchestratorJobStatus, fallback: JobStatus): JobStatus {
+  switch (status) {
+    case OrchestratorJobStatus.QUEUED: return JobStatus.QUEUED;
+    case OrchestratorJobStatus.RUNNING: return JobStatus.RUNNING;
+    case OrchestratorJobStatus.COMPLETED: return JobStatus.COMPLETED;
+    case OrchestratorJobStatus.FAILED: return JobStatus.FAILED;
+    case OrchestratorJobStatus.CANCELLED: return JobStatus.CANCELLED;
+    default: return fallback;
+  }
 }
 interface ComicOrchestratorServiceClient {
   startComicGeneration(request: StartRequest): Observable<StartResponse>;
@@ -151,23 +171,21 @@ export class GenerationJobsService implements OnModuleInit {
         this.orchestratorService.getComicJobStatus({ jobId: id }),
       );
 
-      // Map status id from Orchestrator (Redis) -> Postgres
-      // COMIC_JOB_SUCCESS (6) -> COMPLETED
-      // COMIC_JOB_FAILED (7) -> FAILED
-      // COMIC_JOB_CANCELLED (8) -> CANCELLED
+      // Map status từ Orchestrator (Redis, qua gRPC) -> Postgres.
+      // QUEUED/RUNNING không cần ghi lại vì localJob đã ở đúng state đó rồi.
       let hasChanged = false;
 
-      if (liveStatus.status === 6) {
+      if (liveStatus.status === OrchestratorJobStatus.COMPLETED) {
         await this.framesService.saveFromPanels(localJob.project_id, liveStatus.panels);
         localJob.status = JobStatus.COMPLETED;
         localJob.completed_at = new Date();
         hasChanged = true;
-      } else if (liveStatus.status === 7) {
+      } else if (liveStatus.status === OrchestratorJobStatus.FAILED) {
         localJob.status = JobStatus.FAILED;
         localJob.error_message = liveStatus.errorMessage;
         localJob.completed_at = new Date();
         hasChanged = true;
-      } else if (liveStatus.status === 8) {
+      } else if (liveStatus.status === OrchestratorJobStatus.CANCELLED) {
         localJob.status = JobStatus.CANCELLED;
         localJob.completed_at = new Date();
         hasChanged = true;
@@ -177,7 +195,13 @@ export class GenerationJobsService implements OnModuleInit {
         await this.jobRepo.save(localJob);
       }
 
-      return { localJob, liveStatus };
+      return {
+        localJob,
+        liveStatus: {
+          ...liveStatus,
+          status: mapOrchestratorStatus(liveStatus.status, localJob.status),
+        },
+      };
     } catch (err) {
       return { localJob, error: `Cannot connect to Orchestrator: ${err.message}` };
     }
