@@ -1,4 +1,4 @@
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { CreateGenerationJobDto } from './dto/create-generation-job.dto';
 import { UpdateGenerationJobDto } from './dto/update-generation-job.dto';
 import { firstValueFrom, Observable } from 'rxjs';
@@ -74,6 +74,7 @@ interface ComicOrchestratorServiceClient {
 
 @Injectable()
 export class GenerationJobsService implements OnModuleInit {
+  private readonly logger = new Logger(GenerationJobsService.name);
   private orchestratorService: ComicOrchestratorServiceClient;
   constructor(
     @InjectRepository(GenerationJob)
@@ -166,45 +167,59 @@ export class GenerationJobsService implements OnModuleInit {
     }
 
     // Async Polling Redis Orchestrator with gRPC Callback/Poll
+    let liveStatus: StatusResponse;
     try {
-      const liveStatus = await firstValueFrom(
+      liveStatus = await firstValueFrom(
         this.orchestratorService.getComicJobStatus({ jobId: id }),
       );
+    } catch (err) {
+      this.logger.error(`[Orchestrator gRPC] job ${id}: ${err.message}`, err.stack);
+      return { localJob, error: `Cannot connect to Orchestrator: ${err.message}` };
+    }
 
-      // Map status từ Orchestrator (Redis, qua gRPC) -> Postgres.
-      // QUEUED/RUNNING không cần ghi lại vì localJob đã ở đúng state đó rồi.
-      let hasChanged = false;
+    // Map status từ Orchestrator (Redis, qua gRPC) -> Postgres.
+    // QUEUED/RUNNING không cần ghi lại vì localJob đã ở đúng state đó rồi.
+    let hasChanged = false;
 
-      if (liveStatus.status === OrchestratorJobStatus.COMPLETED) {
+    if (liveStatus.status === OrchestratorJobStatus.COMPLETED) {
+      try {
         await this.framesService.saveFromPanels(localJob.project_id, liveStatus.panels);
         localJob.status = JobStatus.COMPLETED;
         localJob.completed_at = new Date();
         hasChanged = true;
-      } else if (liveStatus.status === OrchestratorJobStatus.FAILED) {
-        localJob.status = JobStatus.FAILED;
-        localJob.error_message = liveStatus.errorMessage;
-        localJob.completed_at = new Date();
-        hasChanged = true;
-      } else if (liveStatus.status === OrchestratorJobStatus.CANCELLED) {
-        localJob.status = JobStatus.CANCELLED;
-        localJob.completed_at = new Date();
-        hasChanged = true;
+      } catch (err) {
+        // KHÔNG re-throw: nếu throw ở đây, response mất luôn cả liveStatus.panels
+        // (FE đang hiển thị ảnh dựa vào field này), và localJob.status vẫn ở RUNNING
+        // nên lần poll kế tiếp sẽ tự retry saveFromPanels (upsert + delete-insert
+        // bubble đều idempotent) — nhưng log lỗi đầy đủ ra đây để không còn "mất tích"
+        // như trước (root cause thật trước đó không hề xuất hiện ở terminal).
+        this.logger.error(
+          `[saveFromPanels] job ${id} project ${localJob.project_id}: ${err.message}`,
+          err.stack,
+        );
       }
-
-      if (hasChanged) {
-        await this.jobRepo.save(localJob);
-      }
-
-      return {
-        localJob,
-        liveStatus: {
-          ...liveStatus,
-          status: mapOrchestratorStatus(liveStatus.status, localJob.status),
-        },
-      };
-    } catch (err) {
-      return { localJob, error: `Cannot connect to Orchestrator: ${err.message}` };
+    } else if (liveStatus.status === OrchestratorJobStatus.FAILED) {
+      localJob.status = JobStatus.FAILED;
+      localJob.error_message = liveStatus.errorMessage;
+      localJob.completed_at = new Date();
+      hasChanged = true;
+    } else if (liveStatus.status === OrchestratorJobStatus.CANCELLED) {
+      localJob.status = JobStatus.CANCELLED;
+      localJob.completed_at = new Date();
+      hasChanged = true;
     }
+
+    if (hasChanged) {
+      await this.jobRepo.save(localJob);
+    }
+
+    return {
+      localJob,
+      liveStatus: {
+        ...liveStatus,
+        status: mapOrchestratorStatus(liveStatus.status, localJob.status),
+      },
+    };
   }
 
   async remove(id: string) {
