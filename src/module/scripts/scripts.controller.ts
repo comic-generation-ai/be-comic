@@ -19,16 +19,16 @@ export class ScriptsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.scriptsService.findOne(+id);
+    return this.scriptsService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateScriptDto: UpdateScriptDto) {
-    return this.scriptsService.update(+id, updateScriptDto);
+    return this.scriptsService.update(id, updateScriptDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.scriptsService.remove(+id);
+    return this.scriptsService.remove(id);
   }
 }

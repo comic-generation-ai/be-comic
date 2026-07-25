@@ -12,15 +12,15 @@ export class ScriptsService {
     return `This action returns all scripts`;
   }
 
-  findOne(id: number) {
+  findOne(id: string) {
     return `This action returns a #${id} script`;
   }
 
-  update(id: number, updateScriptDto: UpdateScriptDto) {
+  update(id: string, updateScriptDto: UpdateScriptDto) {
     return `This action updates a #${id} script`;
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} script`;
   }
 }

@@ -19,16 +19,16 @@ export class CharactersController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.charactersService.findOne(+id);
+    return this.charactersService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCharacterDto: UpdateCharacterDto) {
-    return this.charactersService.update(+id, updateCharacterDto);
+    return this.charactersService.update(id, updateCharacterDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.charactersService.remove(+id);
+    return this.charactersService.remove(id);
   }
 }
