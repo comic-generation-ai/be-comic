@@ -5,6 +5,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded } from 'express';
 import { appConfig } from './common/config';
 
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+
 async function bootstrap() {
   // bodyParser: false — body parser mặc định giới hạn 100kb, avatar base64 vượt
   // ngưỡng đó nên tự áp json/urlencoded với limit lớn hơn thay vì dùng default.
@@ -13,6 +15,7 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '5mb' }));
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalInterceptors(new LoggingInterceptor());
   // Set global prefix to match the OpenAPI contract
   app.setGlobalPrefix('api/');
 
