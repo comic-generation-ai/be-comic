@@ -39,17 +39,23 @@ export class ProjectsController {
     return this.projectsService.findAll(user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.projectsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.projectsService.findOne(id, user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateProjectDto,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.projectsService.update(id, dto);
+    return this.projectsService.update(id, dto, user.userId);
   }
 
   // Guard + kiểm tra chủ sở hữu trong service — tránh user A xóa project của user B

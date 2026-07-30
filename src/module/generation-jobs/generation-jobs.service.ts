@@ -1,10 +1,11 @@
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { CreateGenerationJobDto } from './dto/create-generation-job.dto';
 import { UpdateGenerationJobDto } from './dto/update-generation-job.dto';
 import { firstValueFrom, Observable } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { GenerationJob } from './entities/generation-job.entity';
+import { Project } from 'src/module/projects/entities/project.entity';
 import { JobStatus, JobType } from 'src/common/constants';
 // import { ClientGrpc } from '@nestjs/microservices';
 import * as NestMicro from '@nestjs/microservices';
@@ -93,6 +94,14 @@ export class GenerationJobsService implements OnModuleInit {
   }
 
   async create(dto: CreateGenerationJobDto, userId: string) {
+    const project = await this.jobRepo.manager.getRepository(Project).findOne({
+      where: { id: dto.projectId },
+    });
+    if (!project) throw new NotFoundException(`Project ${dto.projectId} not found`);
+    if (project.user_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền tạo job cho project này');
+    }
+
     const jobId = crypto.randomUUID();
     const requestId = crypto.randomUUID();
 
@@ -154,9 +163,15 @@ export class GenerationJobsService implements OnModuleInit {
     return `This action returns all generationJobs`;
   }
 
-  async findOne(id: string) {
-    const localJob = await this.jobRepo.findOne({ where: { id } });
+  async findOne(id: string, userId: string) {
+    const localJob = await this.jobRepo.findOne({
+      where: { id },
+      relations: { project: true },
+    });
     if (!localJob) throw new NotFoundException(`Job ${id} not found`);
+    if (localJob.project && localJob.project.user_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền truy cập job này');
+    }
 
     if (
       localJob.status === JobStatus.COMPLETED ||
@@ -222,10 +237,16 @@ export class GenerationJobsService implements OnModuleInit {
     };
   }
 
-  async remove(id: string) {
-    const job = await this.jobRepo.findOne({ where: { id } });
+  async remove(id: string, userId: string) {
+    const job = await this.jobRepo.findOne({
+      where: { id },
+      relations: { project: true },
+    });
     if (!job) {
       throw new NotFoundException(`Job ${id} not found`);
+    }
+    if (job.project && job.project.user_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền hủy job này');
     }
 
     const queryRunner = this.dataSource.createQueryRunner();

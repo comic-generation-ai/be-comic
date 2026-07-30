@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Frame } from './entities/frame.entity';
 import { Repository } from 'typeorm';
@@ -7,6 +7,7 @@ import { FrameStatus, BubbleType } from 'src/common/constants';
 import { StorageService } from 'src/common/storage/storage.service';
 import { minioConfig } from 'src/common/config';
 import { SpeechBubble } from '../speech-bubbles/entities/speech-bubble.entity';
+import { Project } from '../projects/entities/project.entity';
 
 const NARRATOR_LABEL = 'Người kể chuyện';
 
@@ -133,15 +134,28 @@ export class FramesService {
     private readonly storage: StorageService
   ) { }
 
-  async getImageUrl(frameId: string) {
-    const frame = await this.frameRepo.findOne({ where: { id: frameId } });
+  async getImageUrl(frameId: string, userId: string) {
+    const frame = await this.frameRepo.findOne({
+      where: { id: frameId },
+      relations: { project: true },
+    });
     if (!frame) throw new NotFoundException(`Frame ${frameId} not found`);
+    if (frame.project && frame.project.user_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền truy cập ảnh của frame này');
+    }
     if (!frame.image_url) throw new NotFoundException(`Frame ${frameId} chưa có ảnh`);
     const url = await this.storage.presignFromKey(frame.image_url);
     return { url, expiresInSec: minioConfig.presignExpirySec };
   }
 
-  findByProject(projectId: string) {
+  async findByProject(projectId: string, userId: string) {
+    const project = await this.frameRepo.manager.getRepository(Project).findOne({
+      where: { id: projectId },
+    });
+    if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+    if (project.user_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền truy cập frames của project này');
+    }
     return this.frameRepo.find({
       where: { project_id: projectId },
       order: { order_index: 'ASC' },

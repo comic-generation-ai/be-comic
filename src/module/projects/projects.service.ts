@@ -34,18 +34,21 @@ export class ProjectsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId?: string) {
     const project = await this.projectRepo.findOne({
       where: { id },
       relations: { frames: true },
       order: { frames: { order_index: 'ASC' } },
     });
     if (!project) throw new NotFoundException(`Project ${id} not found`);
+    if (userId && project.user_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền truy cập project này');
+    }
     return project;
   }
 
-  async update(id: string, dto: UpdateProjectDto) {
-    const project = await this.findOne(id);
+  async update(id: string, dto: UpdateProjectDto, userId: string) {
+    const project = await this.findOne(id, userId);
     Object.assign(project, {
       title: dto.title ?? project.title,
       raw_prompt: dto.rawPrompt ?? project.raw_prompt,
@@ -56,10 +59,7 @@ export class ProjectsService {
   }
 
   async remove(id: string, userId: string) {
-    const project = await this.findOne(id);
-    if (project.user_id !== userId) {
-      throw new ForbiddenException('Bạn không có quyền xóa project này');
-    }
+    const project = await this.findOne(id, userId);
     await this.projectRepo.softDelete(id);
     return { id, deleted: true };
   }

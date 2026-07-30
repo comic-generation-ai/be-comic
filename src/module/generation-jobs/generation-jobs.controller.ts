@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { GenerationJobsService } from './generation-jobs.service';
 import { CreateGenerationJobDto } from './dto/create-generation-job.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,12 +22,18 @@ export class GenerationJobsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.generationJobsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.generationJobsService.findOne(id, user.userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.generationJobsService.remove(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.generationJobsService.remove(id, user.userId);
   }
 }
