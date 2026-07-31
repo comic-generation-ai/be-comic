@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
@@ -17,12 +17,12 @@ export class AuthService {
 
   async register(dto: RegisterDto): Promise<IResponse<any>> {
     if (dto.password !== dto.confirmPassword) {
-      return ResponseCommon.fail(400, 'PASSWORD_NOT_MATCH');
+      throw new BadRequestException('PASSWORD_NOT_MATCH');
     }
 
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
-      return ResponseCommon.fail(400, 'EMAIL_ALREADY_EXISTS');
+      throw new ConflictException('EMAIL_ALREADY_EXISTS');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -38,12 +38,12 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user) {
-      return ResponseCommon.fail(404, 'ACCOUNT_DOES_NOT_EXIST');
+      throw new NotFoundException('ACCOUNT_DOES_NOT_EXIST');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password_hash);
     if (!isPasswordValid) {
-      return ResponseCommon.fail(400, 'WRONG_PASSWORD');
+      throw new BadRequestException('WRONG_PASSWORD');
     }
 
     const token = await this.jwtService.signAsync(

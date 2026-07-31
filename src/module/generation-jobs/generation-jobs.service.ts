@@ -22,7 +22,7 @@ interface StartRequest {
   requestId: string;
 }
 
-enum OrchestratorJobStatus {
+export enum OrchestratorJobStatus {
   UNKNOWN = 0,
   QUEUED = 1,
   RUNNING = 2,
@@ -56,7 +56,7 @@ interface CancelResponse {
   status: number;
 }
 
-function mapOrchestratorStatus(status: OrchestratorJobStatus, fallback: JobStatus): JobStatus {
+export function mapOrchestratorStatus(status: OrchestratorJobStatus, fallback: JobStatus): JobStatus {
   switch (status) {
     case OrchestratorJobStatus.QUEUED: return JobStatus.QUEUED;
     case OrchestratorJobStatus.RUNNING: return JobStatus.RUNNING;
@@ -192,13 +192,18 @@ export class GenerationJobsService implements OnModuleInit {
       return { localJob, error: `Cannot connect to Orchestrator: ${err.message}` };
     }
 
+    const normalizedPanels = (liveStatus.panels || []).map((panel, idx) => ({
+      ...panel,
+      index: panel.index ?? idx,
+    }));
+
     // Map status từ Orchestrator (Redis, qua gRPC) -> Postgres.
     // QUEUED/RUNNING không cần ghi lại vì localJob đã ở đúng state đó rồi.
     let hasChanged = false;
 
     if (liveStatus.status === OrchestratorJobStatus.COMPLETED) {
       try {
-        await this.framesService.saveFromPanels(localJob.project_id, liveStatus.panels);
+        await this.framesService.saveFromPanels(localJob.project_id, normalizedPanels);
         localJob.status = JobStatus.COMPLETED;
         localJob.completed_at = new Date();
         hasChanged = true;
@@ -233,6 +238,7 @@ export class GenerationJobsService implements OnModuleInit {
       liveStatus: {
         ...liveStatus,
         status: mapOrchestratorStatus(liveStatus.status, localJob.status),
+        panels: normalizedPanels,
       },
     };
   }
