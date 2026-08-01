@@ -3,7 +3,6 @@ import { ProjectStatus } from "src/common/constants";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "src/module/users/entities/user.entity";
 import { Script } from "src/module/scripts/entities/script.entity";
-import { Character } from "src/module/characters/entities/character.entity";
 import { Frame } from "src/module/frames/entities/frame.entity";
 import { GenerationJob } from "src/module/generation-jobs/entities/generation-job.entity";
 
@@ -25,9 +24,6 @@ export class Project extends BaseEntity {
 
     @OneToMany(() => Script, (script) => script.project)
     scripts: Script[];
-
-    @OneToMany(() => Character, (character) => character.project)
-    characters: Character[];
 
     @OneToMany(() => Frame, (frame) => frame.project)
     frames: Frame[];
@@ -83,13 +79,5 @@ export class Project extends BaseEntity {
         default: ProjectStatus.DRAFT,
     })
     status: ProjectStatus;
-
-    @Column({
-        name: 'credits_used',
-        type: 'integer',
-        nullable: false,
-        default: 0,
-    })
-    credits_used: number;
 
 }

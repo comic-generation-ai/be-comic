@@ -1,14 +1,5 @@
-import {
-  Controller,
-  Get,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Body, Patch, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
@@ -20,24 +11,18 @@ import {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get()
-  findAll() {
-    return this.usersService.findAll();
-  }
-
-  // Khai báo trước ':id' — nếu không Nest sẽ khớp 'me' vào tham số :id
+  /**
+   * [story-p0-be-security-payment] Changed: removed public GET/PATCH/DELETE /users/:id and GET /users; only JWT-guarded /me endpoints remain.
+   */
   @UseGuards(JwtAuthGuard)
   @Get('me')
   findMe(@CurrentUser() user: CurrentUserPayload) {
     return this.usersService.findMe(user.userId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
-  }
-
-  // Khai báo trước ':id' — nếu không Nest sẽ khớp 'me' vào tham số :id
+  /**
+   * [story-p0-be-security-payment] Changed: PATCH /users/me stays guarded; removed unguarded PATCH /users/:id.
+   */
   @UseGuards(JwtAuthGuard)
   @Patch('me')
   updateMe(
@@ -45,15 +30,5 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.usersService.updateMe(user.userId, dto);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
   }
 }

@@ -3,11 +3,24 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded } from 'express';
-import { appConfig } from './common/config';
+import { appConfig, jwtConfig } from './common/config';
 
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
+/**
+ * [story-p0-be-security-payment] Changed: fail fast when JWT_SECRET missing in production.
+ */
+function validateJwtSecret(): void {
+  if (appConfig.isProduction && !jwtConfig.secret) {
+    throw new Error(
+      'JWT_SECRET is required when NODE_ENV=production. Set it in .env before starting the server.',
+    );
+  }
+}
+
 async function bootstrap() {
+  validateJwtSecret();
+
   // bodyParser: false — body parser mặc định giới hạn 100kb, avatar base64 vượt
   // ngưỡng đó nên tự áp json/urlencoded với limit lớn hơn thay vì dùng default.
   const app = await NestFactory.create(AppModule, { bodyParser: false });

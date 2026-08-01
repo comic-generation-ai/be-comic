@@ -1,23 +1,3 @@
-export enum SubscriptionTier {
-    FREE = 'FREE',
-    BASIC = 'BASIC',
-    PRO = 'PRO',
-    ENTERPRISE = 'ENTERPRISE',
-}
-
-export enum TransactionType {
-    TOP_UP = 'TOP_UP',
-    REFUND = 'REFUND',
-    DEDUCTION = 'DEDUCTION',
-}
-
-export enum TransactionStatus {
-    PENDING = 'PENDING',
-    COMPLETED = 'COMPLETED',
-    FAILED = 'FAILED',
-    CANCELLED = 'CANCELLED',
-}
-
 export enum PanelSatus {
     PENDING = 'PENDING',
     PROCESSING = 'PROCESSING',

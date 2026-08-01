@@ -3,14 +3,10 @@ import { BaseEntity } from 'src/common/base/base-entity.base';
 import {
   Column,
   Entity,
-  JoinColumn,
-  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { SubscriptionTier } from 'src/common/constants';
 import { Project } from 'src/module/projects/entities/project.entity';
-import { Transaction } from 'src/module/transactions/entities/transaction.entity';
 
 @Entity('COMIC_USER')
 export class User extends BaseEntity {
@@ -19,9 +15,6 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Project, (project) => project.user)
   projects: Project[];
-
-  @OneToMany(() => Transaction, (transaction) => transaction.user)
-  transactions: Transaction[];
 
   @Column({
     name: 'email',
@@ -63,28 +56,4 @@ export class User extends BaseEntity {
     nullable: true,
   })
   avatarUrl: string;
-
-  @Column({
-    name: 'subscription_tier',
-    type: 'enum',
-    enum: SubscriptionTier,
-    nullable: false,
-    default: SubscriptionTier.FREE,
-  })
-  subscription_tier: SubscriptionTier;
-
-  @Column({
-    name: 'subscription_renews_at',
-    type: 'timestamp',
-    nullable: true,
-  })
-  subscriptionRenewsAt: Date;
-
-  @Column({
-    name: 'credits_balance',
-    type: 'integer',
-    nullable: false,
-    default: 0,
-  })
-  credits_balance: number;
 }

@@ -14,11 +14,31 @@ export class LoggingInterceptor implements NestInterceptor {
   private readonly name = 'HTTP-Log';
   private logger = new Logger(this.name);
 
+  /**
+   * [story-p0-be-security-payment] Changed: redact password field on auth routes before logging request body.
+   */
+  private sanitizeBody(url: string, body: unknown): unknown {
+    if (!body || typeof body !== 'object') {
+      return body;
+    }
+    const isAuthRoute =
+      url.includes('/auth/login') || url.includes('/auth/register');
+    if (!isAuthRoute) {
+      return body;
+    }
+    const record = { ...(body as Record<string, unknown>) };
+    if ('password' in record) {
+      record.password = '[REDACTED]';
+    }
+    return record;
+  }
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const now = Date.now();
     const ctx = context.switchToHttp();
     const request = ctx.getRequest<Request>();
     const userAgent = request.headers['user-agent'];
+    const safeBody = this.sanitizeBody(request.url, request.body);
     let log = `
             *********************************************************************************
             *      API Request  | [${request.method} -${request.url}] | REQ-${now}
@@ -26,10 +46,8 @@ export class LoggingInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(
         () => {
-          // this.logger.log(`[REQ-${now}][Data] ${JSON.stringify(request.body)}`);
-          // this.logger.log(`============== <API Response> ============ | [REQ-${now}] | ${Date.now() - now} ms ${logSymbols.success}`);
           log += `
-            *                   | [Data] ${JSON.stringify(request.body)}
+            *                   | [Data] ${JSON.stringify(safeBody)}
             *      API Response | ${logSymbols.success} in ${Date.now() - now
             } ms 
             *********************************************************************************
@@ -38,7 +56,7 @@ export class LoggingInterceptor implements NestInterceptor {
         },
         () => {
           log += `
-            *                   | [Data] ${JSON.stringify(request.body)}
+            *                   | [Data] ${JSON.stringify(safeBody)}
             *      API Response | ${logSymbols.error} in ${Date.now() - now} ms 
             *********************************************************************************
                 `;

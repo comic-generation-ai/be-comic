@@ -25,6 +25,7 @@ Các biến quan trọng:
 | `ORCHESTRATOR_URL` | `localhost:50054` | gRPC orchestrator-ai (không phải 50052 — đó là story-ai) |
 | `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Postgres container của dự án |
 | `DB_USERNAME` / `DB_PASSWORD` / `DB_DATABASE` | theo `.env.example` | |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | chuỗi random dài | **Bắt buộc** khi `NODE_ENV=production` |
 
 ### Bước 3: Khởi chạy Database Postgres qua Docker
 ```bash
@@ -42,12 +43,12 @@ docker compose up -d
 `POST /generation-jobs` yêu cầu `projectId` tồn tại (FK). Tạo user + project mẫu:
 ```bash
 docker exec -i be-comic-postgres psql -U admin -d comic_db <<'SQL'
-INSERT INTO "COMIC_USER" (id, email, password_hash, subscription_tier, credits_balance)
-VALUES ('11111111-1111-1111-1111-111111111111', 'dev@test.local', 'x', 'FREE', 100);
+INSERT INTO "COMIC_USER" (id, email, password_hash)
+VALUES ('11111111-1111-1111-1111-111111111111', 'dev@test.local', 'x');
 
-INSERT INTO "COMIC_PROJECT" (id, user_id, title, raw_prompt, status, credits_used)
+INSERT INTO "COMIC_PROJECT" (id, user_id, title, raw_prompt, status)
 VALUES (gen_random_uuid(), '11111111-1111-1111-1111-111111111111',
-        'Truyện test', 'seed', 'DRAFT', 0)
+        'Truyện test', 'seed', 'DRAFT')
 RETURNING id;
 SQL
 ```
@@ -133,13 +134,12 @@ Cách xem: import vào [Swagger Editor](https://editor.swagger.io/) hoặc exten
 * `src/proto/`: contract gRPC (copy từ `documents/contracts/`, build tự đưa vào `dist/proto/`).
 * `src/common/`: Base class, constants, interceptors, filters dùng chung.
 * `src/module/`:
-  * `users/`: tài khoản, credits.
+  * `users/`: tài khoản, profile JWT-guarded (`GET/PATCH /users/me`).
   * `projects/`: dự án truyện của người dùng.
-  * `scripts/`: kịch bản truyện sinh từ AI.
+  * `scripts/`: entity + service nội bộ (không public API — persist kịch bản qua story-be-script-persist).
   * `frames/`: panel đã lưu bền (ảnh + caption + seed). Sinh tự động từ generation-jobs, API chỉ đọc.
   * `speech-bubbles/`: bong bóng thoại đè trên ảnh (FE render SVG — phase sau).
   * `generation-jobs/`: tiến trình tạo truyện, cầu nối gRPC sang orchestrator.
-  * `transactions/`: lịch sử nạp/trừ credits.
 
 ## 🚧 TODO đã biết
 - [ ] Auth JWT (`/api/auth/register|login|me`) + guard cho generation-jobs.
