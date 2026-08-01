@@ -12,7 +12,7 @@ import { FramesService } from '../frames/frames.service';
 import { ScriptsService } from '../scripts/scripts.service';
 import { JobStatus, JobType } from 'src/common/constants';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 describe('GenerationJobsService', () => {
   let service: GenerationJobsService;
@@ -20,6 +20,10 @@ describe('GenerationJobsService', () => {
   let framesService: jest.Mocked<Partial<FramesService>>;
   let scriptsService: jest.Mocked<Partial<ScriptsService>>;
   let getComicJobStatus: jest.Mock;
+  let startComicGeneration: jest.Mock;
+  let cancelComicJob: jest.Mock;
+  let dataSource: { createQueryRunner: jest.Mock };
+  let projectRepo: { findOne: jest.Mock };
 
   beforeEach(async () => {
     jobRepo = {
@@ -50,6 +54,25 @@ describe('GenerationJobsService', () => {
         panels: [{ captionVi: 'Panel 0 text' }, { index: 1, captionVi: 'Panel 1 text' }],
       }),
     );
+    startComicGeneration = jest.fn().mockReturnValue(of({ jobId: 'job-1', status: 1 }));
+    cancelComicJob = jest.fn().mockReturnValue(of({ jobId: 'job-1', status: 5 }));
+
+    const queryRunner = {
+      connect: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      manager: { save: jest.fn() },
+    };
+    dataSource = {
+      createQueryRunner: jest.fn().mockReturnValue(queryRunner),
+    };
+
+    projectRepo = { findOne: jest.fn() };
+    jobRepo.manager = {
+      getRepository: jest.fn().mockReturnValue(projectRepo),
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -62,9 +85,9 @@ describe('GenerationJobsService', () => {
           provide: 'ORCHESTRATOR_PACKAGE',
           useValue: {
             getService: () => ({
-              startComicGeneration: jest.fn().mockReturnValue(of({ jobId: 'job-1', status: 1 })),
+              startComicGeneration,
               getComicJobStatus,
-              cancelComicJob: jest.fn().mockReturnValue(of({ jobId: 'job-1', status: 5 })),
+              cancelComicJob,
             }),
           },
         },
@@ -78,7 +101,7 @@ describe('GenerationJobsService', () => {
         },
         {
           provide: DataSource,
-          useValue: {},
+          useValue: dataSource,
         },
       ],
     }).compile();
@@ -135,6 +158,40 @@ describe('GenerationJobsService', () => {
         dialogue: 'Xin chào',
         speaker: 'A',
       });
+    });
+  });
+
+  describe('create', () => {
+    it('throws NotFound when project missing', async () => {
+      projectRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.create({ projectId: 'p1', summary: 'test story' } as any, 'user-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws Forbidden when project owned by another user', async () => {
+      projectRepo.findOne.mockResolvedValue({
+        id: 'p1',
+        user_id: 'other',
+      });
+      await expect(
+        service.create({ projectId: 'p1', summary: 'test story' } as any, 'user-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('marks job FAILED when gRPC start fails', async () => {
+      projectRepo.findOne.mockResolvedValue({
+        id: 'p1',
+        user_id: 'user-1',
+      });
+      jobRepo.create!.mockReturnValue({ id: 'job-new', status: JobStatus.QUEUED });
+      jobRepo.save!.mockResolvedValue(undefined);
+      startComicGeneration.mockReturnValue(throwError(() => new Error('grpc down')));
+
+      await expect(
+        service.create({ projectId: 'p1', summary: 'test story' } as any, 'user-1'),
+      ).rejects.toThrow('Active pipeline AI error');
+      expect(jobRepo.save).toHaveBeenCalled();
     });
   });
 
@@ -242,6 +299,27 @@ describe('GenerationJobsService', () => {
         expect.objectContaining({ version: 1, panels: expect.any(Array) }),
       );
       expect(framesService.linkScriptToProject).toHaveBeenCalledWith('proj-1', 'script-1');
+    });
+
+    it('marks FAILED when orchestrator reports FAILED', async () => {
+      jobRepo.findOne.mockResolvedValue({
+        id: 'job-1',
+        project_id: 'proj-1',
+        status: JobStatus.RUNNING,
+        project: { user_id: 'user-1' },
+      } as any);
+      getComicJobStatus.mockReturnValue(
+        of({
+          jobId: 'job-1',
+          status: OrchestratorJobStatus.FAILED,
+          errorMessage: 'boom',
+          panels: [],
+        }),
+      );
+
+      const res = await service.findOne('job-1', 'user-1');
+      expect(res.localJob.status).toBe(JobStatus.FAILED);
+      expect(res.localJob.error_message).toBe('boom');
     });
   });
 });

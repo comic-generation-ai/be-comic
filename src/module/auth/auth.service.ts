@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResponseCommon } from 'src/common/dto/response.dto';
 import { IResponse } from 'src/common/Interfaces/respone.interface';
 import { jwtConfig } from 'src/common/config';
@@ -71,5 +72,24 @@ export class AuthService {
       { secret: jwtConfig.secret, expiresIn: jwtConfig.accessTokenExpiresInLogin as any },
     );
     return ResponseCommon.ok({ token }, 'REFRESH_TOKEN_SUCCESS');
+  }
+
+  /**
+   * [story-be-production-hardening] Changed: verify current password then update hash.
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<IResponse<null>> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('ACCOUNT_DOES_NOT_EXIST');
+    }
+
+    const isCurrentValid = await bcrypt.compare(dto.currentPassword, user.password_hash);
+    if (!isCurrentValid) {
+      throw new BadRequestException('WRONG_PASSWORD');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.usersService.updatePasswordHash(userId, passwordHash);
+    return ResponseCommon.ok(null, 'CHANGE_PASSWORD_SUCCESS');
   }
 }

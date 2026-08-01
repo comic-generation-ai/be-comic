@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded } from 'express';
+import helmet from 'helmet';
 import { appConfig, jwtConfig } from './common/config';
 
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -21,29 +22,34 @@ function validateJwtSecret(): void {
 async function bootstrap() {
   validateJwtSecret();
 
-  // bodyParser: false — body parser mặc định giới hạn 100kb, avatar base64 vượt
-  // ngưỡng đó nên tự áp json/urlencoded với limit lớn hơn thay vì dùng default.
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  /**
+   * [story-be-production-hardening] Changed: Helmet security headers on all HTTP responses.
+   */
+  app.use(helmet());
   app.use(json({ limit: '5mb' }));
   app.use(urlencoded({ extended: true, limit: '5mb' }));
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new LoggingInterceptor());
-  // Set global prefix to match the OpenAPI contract
   app.setGlobalPrefix('api/');
 
-  // Swagger Configuration
-  const config = new DocumentBuilder()
-    .setTitle('ComicSystem Public API')
-    .setDescription(
-      'API công khai duy nhất mà fe-comic được phép gọi. Mọi logic AI nằm sau be-comic — client không biết orchestrator/story/image.',
-    )
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
+  /**
+   * [story-be-production-hardening] Changed: Swagger disabled when NODE_ENV=production.
+   */
+  if (!appConfig.isProduction) {
+    const config = new DocumentBuilder()
+      .setTitle('ComicSystem Public API')
+      .setDescription(
+        'API công khai duy nhất mà fe-comic được phép gọi. Mọi logic AI nằm sau be-comic — client không biết orchestrator/story/image.',
+      )
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   app.enableCors({ origin: appConfig.corsOrigins });
 
@@ -51,9 +57,11 @@ async function bootstrap() {
   console.log(
     `Application is running on: http://localhost:${appConfig.port}/api`,
   );
-  console.log(
-    `Swagger documentation is available at: http://localhost:${appConfig.port}/docs`,
-  );
+  if (!appConfig.isProduction) {
+    console.log(
+      `Swagger documentation is available at: http://localhost:${appConfig.port}/docs`,
+    );
+  }
   console.log(`CORS origins: ${appConfig.corsOrigins.join(', ')}`);
 }
 bootstrap();

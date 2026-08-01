@@ -1,11 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
 import { SpeechBubblesService } from './speech-bubbles.service';
 import { CreateSpeechBubbleDto } from './dto/create-speech-bubble.dto';
 import { UpdateSpeechBubbleDto } from './dto/update-speech-bubble.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, type CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 
-@UseGuards(JwtAuthGuard)
 @Controller('speech-bubbles')
 export class SpeechBubblesController {
   constructor(private readonly speechBubblesService: SpeechBubblesService) {}

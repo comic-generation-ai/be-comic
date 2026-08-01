@@ -57,4 +57,18 @@ export class UsersService {
     await this.userRepo.update(id, dto);
     return this.findMe(id);
   }
+
+  /**
+   * [story-be-production-hardening] Changed: update password_hash for change-password flow.
+   */
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    await this.userRepo.update(id, { password_hash: passwordHash });
+  }
+
+  /**
+   * [story-be-production-hardening] Changed: soft-delete account for DELETE /users/me.
+   */
+  async deleteMe(id: string): Promise<void> {
+    await this.userRepo.softDelete(id);
+  }
 }

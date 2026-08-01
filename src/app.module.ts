@@ -10,9 +10,11 @@ import { GenerationJobsModule } from './module/generation-jobs/generation-jobs.m
 import { AuthModule } from './module/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
 
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { JwtAuthGuard } from './module/auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [UsersModule,
@@ -22,6 +24,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     SpeechBubblesModule,
     GenerationJobsModule,
     AuthModule,
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -39,7 +42,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
         entities: [__dirname + '/**/*.entity.{js,ts}'],
         synchronize: false,
         migrations: [__dirname + '/db/migrations/*.{js,ts}'],
-        migrationsRun: true,
+        /**
+         * [story-be-production-hardening] Changed: auto-run migrations only outside production.
+         */
+        migrationsRun: config.get<string>('NODE_ENV') !== 'production',
       }),
     }),
   ],
@@ -49,6 +55,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
     },
   ],
 })
