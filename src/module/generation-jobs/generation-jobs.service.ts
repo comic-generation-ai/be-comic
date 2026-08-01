@@ -286,26 +286,36 @@ export class GenerationJobsService implements OnModuleInit {
       throw new ForbiddenException('Bạn không có quyền hủy job này');
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      // Send cancel signal to Celery Worker infrastructure
-      await firstValueFrom(this.orchestratorService.cancelComicJob({ jobId: id }));
-
-      job.status = JobStatus.CANCELLED;
-      job.completed_at = new Date();
-      await queryRunner.manager.save(GenerationJob, job);
-
-      await queryRunner.commitTransaction();
+    if (job.status === JobStatus.CANCELLED) {
       return { jobId: id, status: job.status };
-    } catch (err) {
-
-      await queryRunner.rollbackTransaction();
-      throw new InternalServerErrorException(`Failed to cancel generation job: ${err.message}`);
-    } finally {
-      await queryRunner.release();
     }
+
+    if (
+      job.status === JobStatus.COMPLETED ||
+      job.status === JobStatus.FAILED
+    ) {
+      throw new NotFoundException(`Job ${id} is already finished`);
+    }
+
+    // [fix-cancel] Changed: best-effort orchestrator cancel; always mark local CANCELLED.
+    try {
+      await firstValueFrom(this.orchestratorService.cancelComicJob({ jobId: id }));
+    } catch (err) {
+      const grpcCode = (err as { code?: number })?.code;
+      if (grpcCode === 5) {
+        this.logger.warn(
+          `[cancel] job ${id}: orchestrator NOT_FOUND — marking CANCELLED locally`,
+        );
+      } else {
+        this.logger.warn(
+          `[cancel] job ${id}: orchestrator cancel failed (${err.message}) — marking CANCELLED locally`,
+        );
+      }
+    }
+
+    job.status = JobStatus.CANCELLED;
+    job.completed_at = new Date();
+    await this.jobRepo.save(job);
+    return { jobId: id, status: job.status };
   }
 }

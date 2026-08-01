@@ -322,4 +322,56 @@ describe('GenerationJobsService', () => {
       expect(res.localJob.error_message).toBe('boom');
     });
   });
+
+  describe('remove', () => {
+    it('calls orchestrator cancel and marks job CANCELLED', async () => {
+      jobRepo.findOne.mockResolvedValue({
+        id: 'job-1',
+        status: JobStatus.RUNNING,
+        project: { user_id: 'user-1' },
+      } as any);
+      jobRepo.save.mockResolvedValue(undefined);
+      cancelComicJob.mockReturnValue(of({ jobId: 'job-1', status: 5 }));
+
+      const res = await service.remove('job-1', 'user-1');
+
+      expect(cancelComicJob).toHaveBeenCalledWith({ jobId: 'job-1' });
+      expect(jobRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: JobStatus.CANCELLED }),
+      );
+      expect(res.status).toBe(JobStatus.CANCELLED);
+    });
+
+    it('marks CANCELLED locally when orchestrator returns NOT_FOUND', async () => {
+      jobRepo.findOne.mockResolvedValue({
+        id: 'job-1',
+        status: JobStatus.RUNNING,
+        project: { user_id: 'user-1' },
+      } as any);
+      jobRepo.save.mockResolvedValue(undefined);
+      cancelComicJob.mockReturnValue(
+        throwError(() => Object.assign(new Error('not found'), { code: 5 })),
+      );
+
+      const res = await service.remove('job-1', 'user-1');
+
+      expect(jobRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: JobStatus.CANCELLED }),
+      );
+      expect(res.status).toBe(JobStatus.CANCELLED);
+    });
+
+    it('returns idempotent response when job already CANCELLED', async () => {
+      jobRepo.findOne.mockResolvedValue({
+        id: 'job-1',
+        status: JobStatus.CANCELLED,
+        project: { user_id: 'user-1' },
+      } as any);
+
+      const res = await service.remove('job-1', 'user-1');
+
+      expect(cancelComicJob).not.toHaveBeenCalled();
+      expect(res.status).toBe(JobStatus.CANCELLED);
+    });
+  });
 });
