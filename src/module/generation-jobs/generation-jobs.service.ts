@@ -12,6 +12,7 @@ import * as NestMicro from '@nestjs/microservices';
 import * as crypto from 'crypto';
 import { FramesService } from '../frames/frames.service';
 import { PanelDto } from './dto/panel.dto';
+import { ScriptsService, ScriptStructuredData } from '../scripts/scripts.service';
 
 interface StartRequest {
   jobId: string;
@@ -72,6 +73,27 @@ interface ComicOrchestratorServiceClient {
   cancelComicJob(request: CancelRequest): Observable<CancelResponse>;
 }
 
+/**
+ * [story-be-script-persist] Changed: build COMIC_SCRIPT.structured_data from gRPC panels (characters empty until proto extended).
+ * Choice documented AC5: use panel fields from GetComicJobStatusResponse; story_title/characters await orchestrator proto v2.
+ */
+export function buildScriptStructuredData(panels: PanelDto[]): ScriptStructuredData {
+  return {
+    version: 1,
+    story_title: '',
+    characters: {},
+    panels: panels.map((panel, idx) => ({
+      panel_number: (panel.index ?? idx) + 1,
+      character_ids: [],
+      image_prompt: panel.promptEn ?? '',
+      dialogue: panel.captionVi ?? '',
+      speaker: panel.speaker ?? '',
+      panel_type: panel.panelType ?? 'dialogue',
+      speaker_position: panel.speakerPosition ?? 'center',
+    })),
+  };
+}
+
 
 @Injectable()
 export class GenerationJobsService implements OnModuleInit {
@@ -83,6 +105,7 @@ export class GenerationJobsService implements OnModuleInit {
     @Inject('ORCHESTRATOR_PACKAGE')
     private readonly grpcClient: NestMicro.ClientGrpc,
     private readonly framesService: FramesService,
+    private readonly scriptsService: ScriptsService,
     private readonly dataSource: DataSource,
 
   ) { }
@@ -204,19 +227,27 @@ export class GenerationJobsService implements OnModuleInit {
     if (liveStatus.status === OrchestratorJobStatus.COMPLETED) {
       try {
         await this.framesService.saveFromPanels(localJob.project_id, normalizedPanels);
+        const structuredData = buildScriptStructuredData(normalizedPanels);
+        const script = await this.scriptsService.createForProject(
+          localJob.project_id,
+          structuredData,
+        );
+        await this.framesService.linkScriptToProject(localJob.project_id, script.id);
         localJob.status = JobStatus.COMPLETED;
         localJob.completed_at = new Date();
         hasChanged = true;
       } catch (err) {
-        // KHÔNG re-throw: nếu throw ở đây, response mất luôn cả liveStatus.panels
-        // (FE đang hiển thị ảnh dựa vào field này), và localJob.status vẫn ở RUNNING
-        // nên lần poll kế tiếp sẽ tự retry saveFromPanels (upsert + delete-insert
-        // bubble đều idempotent) — nhưng log lỗi đầy đủ ra đây để không còn "mất tích"
-        // như trước (root cause thật trước đó không hề xuất hiện ở terminal).
+        /**
+         * [story-be-script-persist] Changed: mark job FAILED instead of staying RUNNING when persist fails.
+         */
         this.logger.error(
-          `[saveFromPanels] job ${id} project ${localJob.project_id}: ${err.message}`,
+          `[saveFromPanels/script] job ${id} project ${localJob.project_id}: ${err.message}`,
           err.stack,
         );
+        localJob.status = JobStatus.FAILED;
+        localJob.error_message = `Persist frames/script failed: ${err.message}`;
+        localJob.completed_at = new Date();
+        hasChanged = true;
       }
     } else if (liveStatus.status === OrchestratorJobStatus.FAILED) {
       localJob.status = JobStatus.FAILED;

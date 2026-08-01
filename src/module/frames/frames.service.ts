@@ -163,6 +163,13 @@ export class FramesService {
     });
   }
 
+  /**
+   * [story-be-script-persist] Changed: set script_id on all frames of a project after COMIC_SCRIPT saved.
+   */
+  async linkScriptToProject(projectId: string, scriptId: string): Promise<void> {
+    await this.frameRepo.update({ project_id: projectId }, { script_id: scriptId });
+  }
+
   async saveFromPanels(projectId: string, panels: PanelDto[]) {
 
     for (const p of panels) {

@@ -6,6 +6,7 @@ import { GenerationJob } from './entities/generation-job.entity';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { FramesModule } from '../frames/frames.module';
+import { ScriptsModule } from '../scripts/scripts.module';
 import { orchestratorConfig } from 'src/common/config';
 
 @Module({
@@ -20,7 +21,7 @@ import { orchestratorConfig } from 'src/common/config';
         url: orchestratorConfig.grpcUrl,
       },
     },
-  ]), FramesModule
+  ]), FramesModule, ScriptsModule
   ],
   controllers: [GenerationJobsController],
   providers: [GenerationJobsService],
