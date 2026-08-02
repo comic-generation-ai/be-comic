@@ -24,11 +24,8 @@ export class ScriptsService {
   constructor(
     @InjectRepository(Script)
     private readonly scriptRepo: Repository<Script>,
-  ) {}
+  ) { }
 
-  /**
-   * [story-be-script-persist] Changed: internal-only persist to COMIC_SCRIPT.structured_data (no public API).
-   */
   async createForProject(
     projectId: string,
     structuredData: ScriptStructuredData,

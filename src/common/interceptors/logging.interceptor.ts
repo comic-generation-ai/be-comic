@@ -14,9 +14,6 @@ export class LoggingInterceptor implements NestInterceptor {
   private readonly name = 'HTTP-Log';
   private logger = new Logger(this.name);
 
-  /**
-   * [story-p0-be-security-payment] Changed: redact password field on auth routes before logging request body.
-   */
   private sanitizeBody(url: string, body: unknown): unknown {
     if (!body || typeof body !== 'object') {
       return body;

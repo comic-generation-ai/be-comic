@@ -7,7 +7,6 @@ import { Repository, DataSource } from 'typeorm';
 import { GenerationJob } from './entities/generation-job.entity';
 import { Project } from 'src/module/projects/entities/project.entity';
 import { JobStatus, JobType } from 'src/common/constants';
-// import { ClientGrpc } from '@nestjs/microservices';
 import * as NestMicro from '@nestjs/microservices';
 import * as crypto from 'crypto';
 import { FramesService } from '../frames/frames.service';
@@ -237,9 +236,6 @@ export class GenerationJobsService implements OnModuleInit {
         localJob.completed_at = new Date();
         hasChanged = true;
       } catch (err) {
-        /**
-         * [story-be-script-persist] Changed: mark job FAILED instead of staying RUNNING when persist fails.
-         */
         this.logger.error(
           `[saveFromPanels/script] job ${id} project ${localJob.project_id}: ${err.message}`,
           err.stack,
@@ -296,8 +292,6 @@ export class GenerationJobsService implements OnModuleInit {
     ) {
       throw new NotFoundException(`Job ${id} is already finished`);
     }
-
-    // [fix-cancel] Changed: best-effort orchestrator cancel; always mark local CANCELLED.
     try {
       await firstValueFrom(this.orchestratorService.cancelComicJob({ jobId: id }));
     } catch (err) {
