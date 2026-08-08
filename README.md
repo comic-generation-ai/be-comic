@@ -1,148 +1,119 @@
-# ComicSystem Backend (`be-comic`)
+# be-comic — Backend API (Hướng dẫn tiếng Việt)
 
-Ứng dụng Backend API được xây dựng bằng **NestJS** và **TypeORM**, đóng vai trò là API Gateway và lưu trữ dữ liệu chính cho hệ thống sinh truyện tranh tự động.
+`be-comic` là backend chính của dự án ComicSystem (NestJS + TypeORM). Nó
+đóng vai trò API gateway và lưu trữ dữ liệu chính. Frontend giao tiếp trực
+tiếp với service này; mọi tác vụ AI (tạo truyện, tạo ảnh) được ủy quyền cho
+`orchestrator-ai` qua gRPC.
 
-Mọi logic giao tiếp với các AI service (gRPC) và điều phối công việc đều được xử lý ở phía sau bởi `orchestrator-ai`. Client (Frontend) chỉ giao tiếp duy nhất với `be-comic`.
+Mục tiêu file này: hướng dẫn đầy đủ, dễ làm theo để người mới clone có thể
+chạy dịch vụ cục bộ, kiểm thử nhanh và khắc phục lỗi thường gặp.
 
 ---
 
-## 🛠️ Cài đặt & Khởi chạy (Local Development)
+**Yêu cầu trước khi bắt đầu**
 
-### Bước 1: Cài đặt Dependencies
+- Hệ điều hành: macOS / Linux / Windows (WSL)
+- Node.js >= 18 (dùng `nvm` khuyến nghị)
+- Python 3.10+ (chỉ cần cho các scripts/proto nếu bạn chạy toàn bộ monorepo)
+- Docker & Docker Compose (để chạy Postgres, Redis, MinIO cho dev)
+
+---
+
+## 1. Cách chạy nhanh (Quickstart)
+
+Từ thư mục gốc của repo:
+
+```bash
+cd be-comic
+cp .env.example .env
+# Mở .env và thiết lập: DB_PASSWORD, ORCHESTRATOR_URL, JWT_SECRET, v.v.
+```
+
+Khởi hạ tầng dev (Postgres, Redis, MinIO) bằng Docker Compose (từ repo root):
+
+```bash
+docker compose up -d postgres redis minio
+```
+
+Cài phụ thuộc và chạy dịch vụ (development):
+
 ```bash
 npm install
-```
-
-### Bước 2: Thiết lập file môi trường `.env`
-```bash
-cp .env.example .env
-```
-Các biến quan trọng:
-
-| Biến | Giá trị khuyên dùng | Ghi chú |
-|---|---|---|
-| `PORT` | `3000` | ⚠️ Default 8000 **đụng cổng** HTTP health của image-ai — đặt 3000 |
-| `ORCHESTRATOR_URL` | `localhost:50054` | gRPC orchestrator-ai (không phải 50052 — đó là story-ai) |
-| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Postgres container của dự án |
-| `DB_USERNAME` / `DB_PASSWORD` / `DB_DATABASE` | theo `.env.example` | |
-| `JWT_SECRET` / `JWT_REFRESH_SECRET` | chuỗi random dài | **Bắt buộc** khi `NODE_ENV=production` |
-
-### Bước 3: Khởi chạy Database Postgres qua Docker
-```bash
-docker compose up -d
-```
-> ⚠️ Máy có nhiều dự án: `docker ps` kiểm tra đúng container `be-comic-postgres`
-> đang chạy (không nhầm với postgres của dự án khác chiếm cổng).
-
-### Bước 4: Chạy Database Migration (TypeORM)
-* Dựng database: `npm run migration:run`
-* Sinh migration mới sau khi sửa Entity: `npm run migration:generate -- src/db/migrations/TenMigration`
-* Rollback migration gần nhất: `npm run migration:revert`
-
-### Bước 5: Seed dữ liệu tối thiểu (bắt buộc trước khi test)
-`POST /generation-jobs` yêu cầu `projectId` tồn tại (FK). Tạo user + project mẫu:
-```bash
-docker exec -i be-comic-postgres psql -U admin -d comic_db <<'SQL'
-INSERT INTO "COMIC_USER" (id, email, password_hash)
-VALUES ('11111111-1111-1111-1111-111111111111', 'dev@test.local', 'x');
-
-INSERT INTO "COMIC_PROJECT" (id, user_id, title, raw_prompt, status)
-VALUES (gen_random_uuid(), '11111111-1111-1111-1111-111111111111',
-        'Truyện test', 'seed', 'DRAFT')
-RETURNING id;
-SQL
-```
-> ⚠️ Dùng `gen_random_uuid()` — UUID "đẹp mắt" kiểu `2222...` sẽ bị ValidationPipe
-> từ chối vì không đúng chuẩn RFC (sai version/variant nibble).
-
-### Bước 6: Khởi chạy NestJS
-```bash
 npm run start:dev
 ```
-Server chạy tại **`http://localhost:3000`**, prefix **`/api`** (ví dụ `POST /api/generation-jobs`).
+
+Sau khi chạy, kiểm tra:
+
+- Swagger UI: http://localhost:3000/docs
+- Health: http://localhost:3000/health
 
 ---
 
-## 🔌 Test API (Postman / Swagger)
+## 2. Biến môi trường quan trọng
 
-Swagger UI có sẵn tại 👉 **http://localhost:3000/docs** (Try it out được).
+- `PORT` — cổng chạy dịch vụ (mặc định 3000)
+- `ORCHESTRATOR_URL` — URL tới `orchestrator-ai` (ví dụ `http://localhost:50054`)
+- Postgres: `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`
+- MinIO: `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`
+- JWT: `JWT_SECRET`, `JWT_REFRESH_SECRET` (bắt buộc khi chạy production)
 
-### Chế độ 1 — Test "khô" (chỉ cần Postgres, KHÔNG cần dàn AI)
-Dùng để test validation + ghi DB. Orchestrator tắt nên POST job sẽ trả
-`500 "Active pipeline AI error"` — **đó là kết quả đúng** của chế độ này
-(job đã ghi DB với status FAILED, kiểm bằng GET).
-
-| Request | Kỳ vọng |
-|---|---|
-| `POST /api/generation-jobs` body chuẩn | 500 pipeline error (orchestrator tắt) |
-| `GET /api/generation-jobs/{id}` | 200, `localJob.status = FAILED` |
-| POST thiếu `summary` | 400 kèm message validate |
-| POST `projectId` không phải UUID | 400 `projectId must be a UUID` |
-| `GET /api/generation-jobs/{uuid-bừa}` | 404 |
-
-### Chế độ 2 — Test luồng đầy đủ (cần dàn AI chạy)
-Bật theo thứ tự: `image-ai` (docker redis+minio → celery worker → server) →
-`story-ai` → `orchestrator-ai` → `be-comic`. Xem README từng repo.
-
-1. `POST /api/generation-jobs`
-   ```json
-   {
-     "projectId": "<uuid từ bước seed>",
-     "summary": "Chú gấu con Nâu học làm bánh mì cùng bà ngoại trong căn bếp ấm áp.",
-     "style": "storybook",
-     "numPanels": 4
-   }
-   ```
-   → `202 { jobId, status: "RUNNING" }`
-2. `GET /api/generation-jobs/{jobId}` — poll mỗi 2-3s, xem `liveStatus.currentStep`
-   chạy từ "Generating story" → "Generating panel 4/4". Trên Mac (model LCM)
-   toàn trình ~3–5 phút; trên GPU cloud ~1–2 phút.
-3. Khi COMPLETED: panels được chốt bền vào Postgres —
-   `GET /api/frames?projectId=...` trả 4 frame (`image_url` là **MinIO object key**,
-   xem ghi chú trong contract).
-4. Hủy job đang chạy: `DELETE /api/generation-jobs/{jobId}`.
-
-### Những điểm FE cần biết (chi tiết trong contract)
-- `liveStatus.status` là **enum số** của orchestrator: 2=STORY_GENERATING,
-  4=IMAGE_GENERATING, 6=SUCCESS, 7=FAILED, 8=CANCELLED.
-- gRPC **lược bỏ giá trị 0**: panel đầu tiên không có field `index` (hiểu là 0),
-  `progressCurrent` vắng mặt nghĩa là 0.
-- `imageUrl` trong liveStatus là presigned URL hết hạn 7 ngày; `image_url` trong
-  frames là object key (endpoint cấp URL mới sẽ bổ sung sau).
-- Chưa có auth JWT (đang làm) — FE nên viết sẵn interceptor gắn Bearer token.
+Luôn giữ file `.env` cục bộ và KHÔNG commit vào git. Dùng `.env.example` làm
+mẫu chia sẻ cho contributor.
 
 ---
 
-## 📖 OpenAPI Contract (Hợp đồng API)
+## 3. Migrations, seed và DB
 
-Hợp đồng chính giữa FE và BE:
-📄 **[public-api.openapi.yaml](../documents/contracts/public-api.openapi.yaml)** (v0.2.0 — đã đồng bộ theo code thực tế)
+- Chạy migration lên DB: `npm run migration:run`
+- Tạo migration mới (sau thay đổi entity):
 
-Cách xem: import vào [Swagger Editor](https://editor.swagger.io/) hoặc extension **OpenAPI (Swagger) Editor** của VS Code.
+```bash
+npm run migration:generate -- src/db/migrations/YourMigrationName
+```
 
-> **Nghi thức khi sửa contract gRPC** (`documents/contracts/*.proto`): sửa file gốc
-> trong `documents/contracts/` → copy về từng service → regen:
-> - `cp documents/contracts/orchestrator.proto be-comic/src/proto/` (Nest tự copy vào
->   `dist/` nhờ `assets` trong `nest-cli.json`)
-> - image-ai / orchestrator-ai: cp + chạy `scripts/generate_proto.sh` của từng repo
+- Nếu có script seed, xem thư mục `src/db/seeds` hoặc `scripts/` để biết chi tiết.
 
 ---
 
-## 📂 Cấu trúc thư mục chính
+## 4. Chạy trong Docker (tùy chọn)
 
-* `src/db/`: cấu hình `data-source.ts` và thư mục `migrations/`.
-* `src/proto/`: contract gRPC (copy từ `documents/contracts/`, build tự đưa vào `dist/proto/`).
-* `src/common/`: Base class, constants, interceptors, filters dùng chung.
-* `src/module/`:
-  * `users/`: tài khoản, profile JWT-guarded (`GET/PATCH /users/me`).
-  * `projects/`: dự án truyện của người dùng.
-  * `scripts/`: entity + service nội bộ (không public API — persist kịch bản qua story-be-script-persist).
-  * `frames/`: panel đã lưu bền (ảnh + caption + seed). Sinh tự động từ generation-jobs, API chỉ đọc.
-  * `speech-bubbles/`: bong bóng thoại đè trên ảnh (FE render SVG — phase sau).
-  * `generation-jobs/`: tiến trình tạo truyện, cầu nối gRPC sang orchestrator.
+Project có thể chạy trong container — tham khảo `docker/` hoặc `docker-compose`
+trong repo (nếu có). Khi chạy trong Docker, đảm bảo các biến môi trường và
+secret (JWT, DB password, MinIO creds) được cấu hình qua Docker secrets hoặc
+environment overrides.
 
-## 🚧 TODO đã biết
-- [ ] Auth JWT (`/api/auth/register|login|me`) + guard cho generation-jobs.
-- [ ] Chuẩn hóa response GET job (phẳng hóa `{localJob, liveStatus}` — sẽ bump contract v0.3).
-- [ ] Endpoint cấp presigned URL từ object key của frames.
-- [ ] CRUD speech-bubbles cho FE.
+---
+
+## 5. Mối liên hệ với các service khác
+
+- `story-ai` sinh nội dung panel-level (FastAPI).
+- `image-ai` xử lý tạo ảnh (gRPC + Celery worker). `be-comic` giao việc qua
+	`orchestrator-ai`.
+- `orchestrator-ai` là trung gian: nhận yêu cầu từ `be-comic`, gọi `story-ai`,
+	gửi task tới `image-ai`, rồi trả kết quả về `be-comic`.
+
+Hãy chắc rằng `ORCHESTRATOR_URL` trỏ đúng tới orchestrator khi chạy.
+
+---
+
+## 6. Troubleshooting thường gặp
+
+- Không kết nối được DB: kiểm tra `DB_HOST`, port, user/password và container
+	Postgres có đang chạy không.
+- Lỗi MinIO: kiểm tra `MINIO_*` giống nhau giữa `be-comic` và các dịch vụ
+	khác (ví dụ `image-ai` upload frames).
+- Nếu swagger không hiển thị, kiểm tra logs console để biết lỗi boot NestJS
+	(migrations, kết nối DB, biến môi trường thiếu).
+
+---
+
+## 7. Đóng góp và phát triển
+
+- Mỗi PR nên kèm migration nếu thay đổi DB schema.
+- Viết unit/integration tests cho các endpoint mới.
+
+---
+
+Nếu cần, tôi có thể cập nhật thêm phần `API reference` (danh sách endpoint)
+theo spec hiện có hoặc thêm hướng dẫn chạy toàn bộ hệ thống (start tất cả
+services cùng lúc) — bạn muốn tôi làm tiếp phần nào không?
